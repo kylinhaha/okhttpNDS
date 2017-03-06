@@ -1,0 +1,40 @@
+apply plugin: 'maven-publish'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+[compileJava, compileTestJava, javadoc]*.options*.encoding = 'UTF-8'
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
+
+afterEvaluate { project ->
+    tasks.all { Task task ->
+        if (task.name.equalsIgnoreCase('publishOkhttp3PlusPublicationToMavenLocal')) {
+            task.dependsOn tasks.getByName('assemble')
+        }
+    }
+}
+
+publishing {
+    publications {
+        Okhttp3Plus(MavenPublication) {
+            from components.java
+            groupId = group
+            artifactId = project.getName()
+            version = version
+        }
+    }
+}
