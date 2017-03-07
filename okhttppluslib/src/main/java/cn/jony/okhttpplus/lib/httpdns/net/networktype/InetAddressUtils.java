@@ -17,6 +17,10 @@ public class InetAddressUtils {
     private InetAddressUtils() {
     }
 
+    public static boolean isIPAddress(final String input) {
+        return isIPv4Address(input) || isIPv6Address(input);
+    }
+
     public static boolean isIPv4Address(final String input) {
         return IPV4_PATTERN.matcher(input).matches();
     }

@@ -21,6 +21,16 @@ public interface HostResolveStrategy {
         public boolean isReliable(HostIP ip) {
             return false;
         }
+
+        @Override
+        public void update() {
+
+        }
+
+        @Override
+        public void clear() {
+
+        }
     };
 
     /**
@@ -33,4 +43,8 @@ public interface HostResolveStrategy {
     List<InetAddress> lookup(String hostname) throws UnknownHostException;
 
     boolean isReliable(HostIP ip);
+
+    void update();
+
+    void clear();
 }
