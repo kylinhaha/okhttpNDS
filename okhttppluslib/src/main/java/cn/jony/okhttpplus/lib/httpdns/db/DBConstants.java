@@ -69,7 +69,7 @@ public interface DBConstants {
                     COLUMN_SAVE_MILLIS + " LONG," +
                     COLUMN_SUCCESS_NUM + " INTEGER," +
                     COLUMN_FAIL_NUM + " INTEGER," +
-                    COLUMN_VISIT_NUM + " INTEGER," +
+                    COLUMN_VISIT_NUM + " INTEGER" +
                     ");";
 
     String CREATE_HOST_INDEX_SQL = "CREATE INDEX idx_host ON " + TABLE_IP + "(" + COLUMN_HOST + ");";

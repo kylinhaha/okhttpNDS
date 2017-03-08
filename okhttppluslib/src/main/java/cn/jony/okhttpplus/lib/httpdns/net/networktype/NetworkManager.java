@@ -60,6 +60,9 @@ public class NetworkManager extends Constants {
     }
 
     public static NetworkManager getInstance() {
+        if (Instance == null) {
+            throw new IllegalStateException("must invoke CreateInstance first");
+        }
         return Instance;
     }
 
@@ -139,6 +142,10 @@ public class NetworkManager extends Constants {
         return String.valueOf(operatorType);
     }
 
+    public boolean isNetOK() {
+        return NetworkManager.Util.getNetworkType() != Constants.NETWORK_TYPE_UNCONNECTED &&
+                NetworkManager.Util.getNetworkType() != Constants.MOBILE_UNKNOWN;
+    }
 
     public static class Util {
 

@@ -54,21 +54,15 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
     }
 
     @Override
-    public List<InetAddress> lookup(String hostname) throws UnknownHostException {
-        return super.lookup(hostname);
-    }
-
-    @Override
     public boolean isReliable(HostIP ip) {
         DNSCacheConfig config = DNSCache.Instance.config;
-        return !TextUtils.isEmpty(ip.targetIP) && ip.getWorkMillis() < config
-                .expireMillis && ip.rtt < HostIP.PERMIT_MAX_RTT && ip.ttl <= config.maxTtl &&
+        return !TextUtils.isEmpty(ip.targetIP) && ip.getWorkMillis() < config.expireMillis
+                && ip.rtt <= HostIP.PERMIT_MAX_RTT && ip.ttl <= config.maxTtl &&
                 allowFail(ip);
     }
 
     private boolean allowFail(HostIP ip) {
-        return (ip.failNum < MAX_FAIL_NUM && ip.sucNum > 0) || ip.getFailPercent() <
-                MAX_FAIL_PERCENT;
+        return ip.failNum < MAX_FAIL_NUM || ip.getFailPercent() < MAX_FAIL_PERCENT;
     }
 
 
@@ -80,7 +74,7 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
     }
 
     private static List<InetAddress> ipList2Addresses(List<HostIP> ipList) {
-        if (EmptyUtil.isCollectionEmpty(ipList)) {
+        if (!EmptyUtil.isCollectionEmpty(ipList)) {
             List<InetAddress> addresses = new ArrayList<>();
             for (HostIP ip : ipList) {
                 try {
@@ -98,8 +92,12 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
 
     @Override
     public List<InetAddress> lookupInDB(String hostname) {
-        List<HostIP> list = DNSCache.Instance.dbHelper.getIPByHost(hostname);
-        cache.put(hostname, list);
+        List<HostIP> list = DNSCache.Instance.getDbHelper().getIPByHost(hostname);
+        filter(list);
+
+        if (!EmptyUtil.isCollectionEmpty(list)) {
+            cache.put(hostname, list);
+        }
         return ipList2Addresses(list);
     }
 
@@ -121,15 +119,17 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
                 if (response.isSuccessful()) {
                     BufferedSource source = response.body().source();
                     final List<HostIP> ipList = new ArrayList<>();
-                    parseDnsPodLine(source, ipList, inetAddressList, hostname);
+                    parseDnsPod(source, ipList, inetAddressList, hostname);
 
-                    cache.put(hostname, ipList);
-                    RealTimeThreadPool.getInstance().execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            DNSCache.Instance.dbHelper.addIPList(ipList);
-                        }
-                    });
+                    if (!EmptyUtil.isCollectionEmpty(ipList)) {
+                        RealTimeThreadPool.getInstance().execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                cache.put(hostname, ipList);
+                                DNSCache.Instance.getDbHelper().addIPList(ipList);
+                            }
+                        });
+                    }
                 }
             }
         });
@@ -137,14 +137,13 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
         return inetAddressList;
     }
 
-    private void parseDnsPodLine(BufferedSource source, List<HostIP> ipList, List<InetAddress>
+    private void parseDnsPod(BufferedSource source, List<HostIP> ipList, List<InetAddress>
             inetAddressList, String hostname) throws IOException {
-        String line;
-        while (TextUtils.isEmpty(line = source.readUtf8Line())) {
+        String line = source.readUtf8Line();
+        if (!TextUtils.isEmpty(line)) {
             String[] tmp = line.split(",");
             if (tmp.length == 2) {
-                String targetIP = tmp[0];
-                inetAddressList.add(InetAddress.getByName(targetIP));
+                String targetIPs = tmp[0];
 
                 int ttl = -1;
                 try {
@@ -153,15 +152,23 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
                     Log.e(TAG, Log.getStackTraceString(e));
                 }
 
-                HostIP.Builder builder = new HostIP.Builder().sourceIP(NetworkManager
-                        .getInstance()
-                        .ipAddress).targetIP(targetIP).operator(NetworkManager
-                        .getInstance().getOperatorId()).host(hostname);
-                if (ttl > 0) {
-                    builder.ttl(ttl);
-                }
 
-                ipList.add(builder.build());
+                if (!TextUtils.isEmpty(targetIPs)) {
+                    String[] ipArr = targetIPs.split(";");
+                    for (String targetIP : ipArr) {
+                        inetAddressList.add(InetAddress.getByName(targetIP));
+
+                        HostIP.Builder builder = new HostIP.Builder()
+                                .sourceIP(NetworkManager.getInstance().ipAddress)
+                                .targetIP(targetIP).operator(NetworkManager.getInstance().operatorTypeStr)
+                                .saveMillis(System.currentTimeMillis()).host(hostname);
+                        if (ttl > 0) {
+                            builder.ttl(ttl);
+                        }
+
+                        ipList.add(builder.build());
+                    }
+                }
             }
         }
     }
@@ -172,7 +179,7 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
      */
     @Override
     public void update() {
-        DNSCacheDatabaseHelper dbHelper = DNSCache.Instance.dbHelper;
+        DNSCacheDatabaseHelper dbHelper = DNSCache.Instance.getDbHelper();
         List<HostIP> ipList = dbHelper.getAllIP();
         Iterator<HostIP> ipIterator = ipList.iterator();
         while (ipIterator.hasNext()) {
@@ -180,7 +187,7 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
             int rtt = speedTestManager.speedTest(ip.targetIP, ip.host);
             if (rtt > 0) {
                 ip.sucNum++;
-                ip.rtt = (ip.rtt + rtt) / ip.sucNum;
+                ip.rtt = ip.sucNum == 1 ? rtt : (ip.rtt + rtt) / ip.sucNum;
                 if (ip.visitSinceSaved >= VISIT_THRESHOLD) {
                     ip.visitSinceSaved = 0;
                     ip.saveMillis = System.currentTimeMillis();
@@ -201,13 +208,36 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
     }
 
     @Override
+    public void update(HostIP ip) {
+        DNSCache.Instance.getDbHelper().updateIp(ip);
+        List<HostIP> ipList = cache.get(ip.host);
+        for (HostIP ip1 : ipList) {
+            if (ip1.equals(ip)) {
+                ip1.sucNum = ip.sucNum;
+                ip1.failNum = ip.failNum;
+                ip1.rtt = ip.rtt;
+                ip1.visitSinceSaved = ip.visitSinceSaved;
+            }
+        }
+    }
+
+    @Override
     public void clear() {
         cache.evictAll();
-        DNSCache.Instance.dbHelper.clear();
+        DNSCache.Instance.getDbHelper().clear();
     }
 
     private void generateHostIPList(List<HostIP> ipList) {
         if (EmptyUtil.isCollectionEmpty(ipList) || ipList.size() == 1)
+            return;
+
+        filter(ipList);
+
+        Collections.sort(ipList, IP_COMPARATOR);
+    }
+
+    private void filter(List<HostIP> ipList) {
+        if (ipList == null)
             return;
 
         Iterator<HostIP> it = ipList.iterator();
@@ -217,8 +247,6 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
                 it.remove();
             }
         }
-
-        Collections.sort(ipList, IP_COMPARATOR);
     }
 
     private static final int FAIL_WEIGHT = 200;

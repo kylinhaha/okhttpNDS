@@ -28,6 +28,11 @@ public interface HostResolveStrategy {
         }
 
         @Override
+        public void update(HostIP ip) {
+
+        }
+
+        @Override
         public void clear() {
 
         }
@@ -45,6 +50,8 @@ public interface HostResolveStrategy {
     boolean isReliable(HostIP ip);
 
     void update();
+
+    void update(HostIP ip);
 
     void clear();
 }

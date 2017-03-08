@@ -4,11 +4,11 @@ package cn.jony.okhttpplus.lib.httpdns;
 import cn.jony.okhttpplus.lib.httpdns.strategy.HostResolveStrategy;
 
 public class DNSCacheConfig {
-    private static final long EXPIRE_MILLIS = 10_000;
+    private static final long EXPIRE_MILLIS = 1200_000;
 
-    private static final int MAX_TTL = 255;
+    private static final int MAX_TTL = 300;
     private static final int FAST_TTL = 64;
-    private static final int MAX_CACHE_SIZE = 100;
+    private static final int MAX_CACHE_SIZE = 20;
 
     public String hostResolveStrategyName;
     public HostResolveStrategy hostResolveStrategy;
@@ -40,7 +40,7 @@ public class DNSCacheConfig {
         maxCacheSize = builder.maxCacheSize;
     }
 
-    public class Builder {
+    public static class Builder {
         private String hostResolveStrategyName = HostResolveStrategy.DEFAULT;
         private HostResolveStrategy hostResolveStrategy;
         private long expireMillis = EXPIRE_MILLIS;

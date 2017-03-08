@@ -4,7 +4,7 @@ package cn.jony.okhttpplus.lib.httpdns.model;
 import cn.jony.okhttpplus.lib.httpdns.strategy.HostResolveStrategy;
 
 public class HostIP {
-    public static final long PERMIT_MAX_RTT = 200;
+    public static final long PERMIT_MAX_RTT = 500;
     private static final int MAX_TTL = 255;
 
     public String sourceIP;
@@ -117,5 +117,21 @@ public class HostIP {
         public HostIP build() {
             return new HostIP(this);
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        HostIP ip = (HostIP) o;
+
+        return targetIP != null ? targetIP.equals(ip.targetIP) : ip.targetIP == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        return targetIP != null ? targetIP.hashCode() : 0;
     }
 }

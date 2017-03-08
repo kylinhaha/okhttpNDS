@@ -5,7 +5,6 @@ import java.io.IOException;
 
 import cn.jony.okhttpplus.lib.httpdns.DNSCache;
 import cn.jony.okhttpplus.lib.httpdns.model.HostIP;
-import cn.jony.okhttpplus.lib.httpdns.net.networktype.Constants;
 import cn.jony.okhttpplus.lib.httpdns.net.networktype.InetAddressUtils;
 import cn.jony.okhttpplus.lib.httpdns.net.networktype.NetworkManager;
 import okhttp3.Interceptor;
@@ -16,23 +15,29 @@ public class DnsVisitNetInterceptor implements Interceptor {
     @Override
     public Response intercept(Chain chain) throws IOException {
         Request request = chain.request();
+        long startTime = System.currentTimeMillis();
         Response response = chain.proceed(request);
-        final String host = request.url().host();
+
+        final String host = chain.connection().socket().getInetAddress().getHostAddress();
         final boolean isSuc = response.isSuccessful();
+        final long rtt = System.currentTimeMillis() - startTime;
+
         new Thread(new Runnable() {
             @Override
             public void run() {
-                if (NetworkManager.Util.getNetworkType() != Constants.NETWORK_TYPE_UNCONNECTED &&
-                        NetworkManager.Util.getNetworkType() != Constants.MOBILE_UNKNOWN &&
+                if (NetworkManager.getInstance().isNetOK() &&
                         InetAddressUtils.isIPAddress(host)) {
-                    HostIP ip = DNSCache.Instance.dbHelper.getIPByID(host);
-                    if (isSuc) {
-                        ip.sucNum++;
-                    } else {
-                        ip.failNum++;
+                    HostIP ip = DNSCache.Instance.getIP(host);
+                    if (ip != null) {
+                        if (isSuc) {
+                            ip.sucNum++;
+                            ip.rtt = ip.sucNum == 1 ? rtt : (ip.rtt + rtt) / ip.sucNum;
+                        } else {
+                            ip.failNum++;
+                        }
+                        ip.visitSinceSaved++;
+                        DNSCache.Instance.updateIP(ip);
                     }
-                    ip.visitSinceSaved++;
-                    DNSCache.Instance.dbHelper.updateIp(ip);
                 }
             }
         }).start();

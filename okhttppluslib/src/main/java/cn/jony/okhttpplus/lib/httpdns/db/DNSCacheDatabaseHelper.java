@@ -119,13 +119,20 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
             sql.append(TABLE_IP);
             sql.append(" where ").append(COLUMN_TARGET_IP).append(" = ? ");
             SQLiteDatabase db = getReadableDatabase();
+            Cursor cursor = null;
             try {
-                Cursor cursor = db.rawQuery(sql.toString(), new String[]{targetId});
+                cursor = db.rawQuery(sql.toString(), new String[]{targetId});
                 if (cursor != null && cursor.getCount() > 0) {
+                    cursor.moveToFirst();
                     return ipFromDB(cursor);
                 }
             } catch (Exception e) {
                 error(e);
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+                db.close();
             }
 
             return null;
@@ -196,17 +203,6 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
     }
 
     /**
-     * 向数据库中新增一条ip记录
-     */
-
-    public long addIP(HostIP ip) {
-        synchronized (synLock) {
-            SQLiteDatabase db = getWritableDatabase();
-            return db.insert(TABLE_IP, null, ip2ContentValues(ip));
-        }
-    }
-
-    /**
      * @param ipList
      * @return 添加成功数目
      */
@@ -251,7 +247,6 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
     public void updateIpList(List<HostIP> ipList) {
         synchronized (synLock) {
             SQLiteDatabase db = getWritableDatabase();
-            db.beginTransaction();
             try {
                 StringBuilder where = new StringBuilder();
                 where.append(COLUMN_TARGET_IP);
@@ -260,11 +255,9 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
                     String[] args = new String[]{String.valueOf(ip.targetIP)};
                     db.update(TABLE_IP, ip2ContentValues(ip), where.toString(), args);
                 }
-                db.setTransactionSuccessful();
             } catch (Exception e) {
                 error(e);
             } finally {
-                db.endTransaction();
                 IOUtils.closeQuietly(db);
             }
         }
@@ -282,6 +275,7 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
         ip.sucNum = cursor.getInt(cursor.getColumnIndex(COLUMN_SUCCESS_NUM));
         ip.failNum = cursor.getInt(cursor.getColumnIndex(COLUMN_FAIL_NUM));
         ip.visitSinceSaved = cursor.getInt(cursor.getColumnIndex(COLUMN_VISIT_NUM));
+
         return ip;
     }
 

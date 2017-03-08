@@ -17,10 +17,14 @@ public abstract class AbsHostResolveStrategy implements HostResolveStrategy {
         if (InetAddressUtils.isIPv4Address(hostname) || InetAddressUtils.isIPv6Address(hostname))
             return null;
 
-        List<InetAddress> result;
-        return EmptyUtil.isCollectionEmpty(result = lookupInMemory(hostname)) ? EmptyUtil
-                .isCollectionEmpty(result = lookupInDB(hostname)) ? lookupNet(hostname) : result
-                : result;
+        List<InetAddress> result = lookupInMemory(hostname);
+        if (EmptyUtil.isCollectionEmpty(result)) {
+            result = lookupInDB(hostname);
+            if (EmptyUtil.isCollectionEmpty(result)) {
+                result = lookupNet(hostname);
+            }
+        }
+        return result;
     }
 
     public abstract List<InetAddress> lookupInMemory(String hostname);
