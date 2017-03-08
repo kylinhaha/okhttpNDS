@@ -69,8 +69,38 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
     @Override
     public List<InetAddress> lookupInMemory(String hostname) {
         List<HostIP> list = cache.get(hostname);
-        generateHostIPList(list);
+        generateAndRemoveIPList(list);
         return ipList2Addresses(list);
+    }
+
+    private List<HostIP> generateAndRemoveIPList(List<HostIP> ipList) {
+        if (EmptyUtil.isCollectionEmpty(ipList) || ipList.size() == 1)
+            return null;
+
+        filter(ipList);
+        List<HostIP> result = new ArrayList<>();
+        String sourceIP = NetworkManager.getInstance().ipAddress;
+        if (sourceIP != null)
+            for (HostIP ip : ipList)
+                if (sourceIP.equals(ip.sourceIP)) {
+                    result.add(ip);
+                }
+
+        Collections.sort(ipList, IP_COMPARATOR);
+        return result;
+    }
+
+    private void filter(List<HostIP> ipList) {
+        if (ipList == null)
+            return;
+
+        Iterator<HostIP> it = ipList.iterator();
+        while (it.hasNext()) {
+            HostIP ip = it.next();
+            if (!isReliable(ip)) {
+                it.remove();
+            }
+        }
     }
 
     private static List<InetAddress> ipList2Addresses(List<HostIP> ipList) {
@@ -92,7 +122,7 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
 
     @Override
     public List<InetAddress> lookupInDB(String hostname) {
-        List<HostIP> list = DNSCache.Instance.getDbHelper().getIPByHost(hostname);
+        List<HostIP> list = DNSCache.Instance.getDbHelper().getIPByHostAndSourceIP(hostname, NetworkManager.getInstance().ipAddress);
         filter(list);
 
         if (!EmptyUtil.isCollectionEmpty(list)) {
@@ -225,28 +255,6 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
     public void clear() {
         cache.evictAll();
         DNSCache.Instance.getDbHelper().clear();
-    }
-
-    private void generateHostIPList(List<HostIP> ipList) {
-        if (EmptyUtil.isCollectionEmpty(ipList) || ipList.size() == 1)
-            return;
-
-        filter(ipList);
-
-        Collections.sort(ipList, IP_COMPARATOR);
-    }
-
-    private void filter(List<HostIP> ipList) {
-        if (ipList == null)
-            return;
-
-        Iterator<HostIP> it = ipList.iterator();
-        while (it.hasNext()) {
-            HostIP ip = it.next();
-            if (!isReliable(ip)) {
-                it.remove();
-            }
-        }
     }
 
     private static final int FAIL_WEIGHT = 200;

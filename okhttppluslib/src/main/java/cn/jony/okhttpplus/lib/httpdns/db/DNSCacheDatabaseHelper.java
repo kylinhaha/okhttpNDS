@@ -139,20 +139,21 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
         }
     }
 
-    public List<HostIP> getIPByHost(String hostname) {
+    public List<HostIP> getIPByHostAndSourceIP(String hostname, String sourceIP) {
         synchronized (synLock) {
             List<HostIP> list = new ArrayList<>();
             StringBuilder sql = new StringBuilder();
             sql.append("SELECT * FROM ");
             sql.append(TABLE_IP);
             sql.append(" where ").append(COLUMN_HOST).append(" = ? ");
+            sql.append(" and ").append(COLUMN_SOURCE_IP).append(" = ?");
             sql.append("order by ").append(COLUMN_FAIL_NUM).append(" asc, ").append(COLUMN_RTT)
                     .append(" asc, ").append(COLUMN_TTL).append(" asc;");
 
             SQLiteDatabase db = getReadableDatabase();
             Cursor cursor = null;
             try {
-                cursor = db.rawQuery(sql.toString(), new String[]{hostname});
+                cursor = db.rawQuery(sql.toString(), new String[]{hostname, sourceIP});
                 if (cursor != null && cursor.getCount() > 0) {
                     cursor.moveToFirst();
                     do {
