@@ -73,6 +73,7 @@ public interface DBConstants {
                     "PRIMARY KEY(" + COLUMN_TARGET_IP + "," + COLUMN_SOURCE_IP + ")" +
                     ");";
 
-    String CREATE_HOST_INDEX_SQL = "CREATE INDEX idx_host ON " + TABLE_IP + "(" + COLUMN_HOST + ");";
+    String CREATE_HOST_INDEX_SQL = "CREATE INDEX idx_host_sourceId ON " + TABLE_IP +
+            "(" + COLUMN_HOST + "," + COLUMN_SOURCE_IP + ");";
 
 }
