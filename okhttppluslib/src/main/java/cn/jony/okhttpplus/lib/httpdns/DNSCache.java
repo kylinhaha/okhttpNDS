@@ -145,8 +145,8 @@ public enum DNSCache {
         getHostResolveStrategy().update(ip);
     }
 
-    public HostIP getIP(String ip) {
-        return dbHelper.getIPByID(ip);
+    public HostIP getIP(String sourceId,String targetId) {
+        return dbHelper.getIPByID(sourceId,targetId);
     }
 
     private class UpdateThread extends Thread {

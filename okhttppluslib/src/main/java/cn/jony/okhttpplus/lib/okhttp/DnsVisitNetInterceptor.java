@@ -27,7 +27,7 @@ public class DnsVisitNetInterceptor implements Interceptor {
             public void run() {
                 if (NetworkManager.getInstance().isNetOK() &&
                         InetAddressUtils.isIPAddress(host)) {
-                    HostIP ip = DNSCache.Instance.getIP(host);
+                    HostIP ip = DNSCache.Instance.getIP(NetworkManager.getInstance().ipAddress, host);
                     if (ip != null) {
                         if (isSuc) {
                             ip.sucNum++;

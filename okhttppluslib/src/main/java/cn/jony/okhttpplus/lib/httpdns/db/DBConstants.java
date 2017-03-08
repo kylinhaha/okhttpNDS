@@ -60,7 +60,7 @@ public interface DBConstants {
      */
     String CREATE_IP_TEBLE_SQL =
             "CREATE TABLE " + TABLE_IP + " (" +
-                    COLUMN_TARGET_IP + " TEXT PRIMARY KEY," +
+                    COLUMN_TARGET_IP + " TEXT," +
                     COLUMN_HOST + " TEXT," +
                     COLUMN_SOURCE_IP + " TEXT," +
                     COLUMN_OPERATOR + " TEXT," +
@@ -69,7 +69,8 @@ public interface DBConstants {
                     COLUMN_SAVE_MILLIS + " LONG," +
                     COLUMN_SUCCESS_NUM + " INTEGER," +
                     COLUMN_FAIL_NUM + " INTEGER," +
-                    COLUMN_VISIT_NUM + " INTEGER" +
+                    COLUMN_VISIT_NUM + " INTEGER," +
+                    "PRIMARY KEY(" + COLUMN_TARGET_IP + "," + COLUMN_SOURCE_IP + ")" +
                     ");";
 
     String CREATE_HOST_INDEX_SQL = "CREATE INDEX idx_host ON " + TABLE_IP + "(" + COLUMN_HOST + ");";
