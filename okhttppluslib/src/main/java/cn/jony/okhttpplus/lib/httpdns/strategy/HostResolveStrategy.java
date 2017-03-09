@@ -9,7 +9,7 @@ import cn.jony.okhttpplus.lib.httpdns.model.HostIP;
 
 public interface HostResolveStrategy {
     /**
-     * 使用HttpDNS解析策略模式 <br />
+     * 使用HttpDNS解析的策略 <br />
      * default - DNS解析流程包括 <br />
      * 1. 查找 <br />
      * 查找索引包括host和sourceIP，依次分3个层次cache，db和httpDNS查找；在任何一层如果查找到数据则返回，并用查找出来的数据刷新上一层次的数据；
