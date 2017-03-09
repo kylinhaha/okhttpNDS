@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.util.Log;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -123,6 +124,16 @@ public enum DNSCache {
         updateThread.sendMessageDelay(CLEAR_CACHE_MSG, config.expireMillis);
     }
 
+    public void preLoadDNS(String... hostnames) {
+        for (String hostname : hostnames) {
+            try {
+                lookup(hostname);
+            } catch (UnknownHostException e) {
+                Log.e("dnscache", Log.getStackTraceString(e));
+            }
+        }
+    }
+
     public List<InetAddress> lookup(String hostname) throws UnknownHostException {
         if (hostname == null) throw new UnknownHostException("hostname == null");
         return getHostResolveStrategy().lookup(hostname);
@@ -145,8 +156,8 @@ public enum DNSCache {
         getHostResolveStrategy().update(ip);
     }
 
-    public HostIP getIP(String sourceId,String targetId) {
-        return dbHelper.getIPByID(sourceId,targetId);
+    public HostIP getIP(String sourceId, String targetId) {
+        return dbHelper.getIPByID(sourceId, targetId);
     }
 
     private class UpdateThread extends Thread {

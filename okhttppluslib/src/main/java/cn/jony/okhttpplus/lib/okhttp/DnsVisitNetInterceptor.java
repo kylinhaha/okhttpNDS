@@ -18,23 +18,24 @@ public class DnsVisitNetInterceptor implements Interceptor {
         long startTime = System.currentTimeMillis();
         Response response = chain.proceed(request);
 
-        final String host = chain.connection().socket().getInetAddress().getHostAddress();
+        final String targetIP = chain.connection().socket().getInetAddress().getHostAddress();
         final boolean isSuc = response.isSuccessful();
-        final long rtt = System.currentTimeMillis() - startTime;
+        // TODO: 2017/3/8 这里的rtt可能并非一次rtt，这里为了简便使用请求时间来默认代替rtt
+        final long rtt;
+        if (NetworkManager.getInstance().isNetOK()) {
+            rtt = System.currentTimeMillis() - startTime;
+        } else {
+            rtt = -1;
+        }
 
         new Thread(new Runnable() {
             @Override
             public void run() {
                 if (NetworkManager.getInstance().isNetOK() &&
-                        InetAddressUtils.isIPAddress(host)) {
-                    HostIP ip = DNSCache.Instance.getIP(NetworkManager.getInstance().ipAddress, host);
+                        InetAddressUtils.isIPAddress(targetIP)) {
+                    HostIP ip = DNSCache.Instance.getIP(NetworkManager.getInstance().ipAddress, targetIP);
                     if (ip != null) {
-                        if (isSuc) {
-                            ip.sucNum++;
-                            ip.rtt = ip.sucNum == 1 ? rtt : (ip.rtt + rtt) / ip.sucNum;
-                        } else {
-                            ip.failNum++;
-                        }
+                        ip.updateRtt(rtt, isSuc);
                         ip.visitSinceSaved++;
                         DNSCache.Instance.updateIP(ip);
                     }

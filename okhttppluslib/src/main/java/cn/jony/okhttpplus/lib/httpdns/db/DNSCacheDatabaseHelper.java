@@ -236,8 +236,9 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
             try {
                 StringBuilder where = new StringBuilder();
                 where.append(COLUMN_TARGET_IP);
-                where.append(" = ? ");
-                String[] args = new String[]{String.valueOf(ip.targetIP)};
+                where.append(" = ? ").append(" and ");
+                where.append(COLUMN_SOURCE_IP).append("= ?;");
+                String[] args = new String[]{ip.targetIP, ip.sourceIP};
                 db.update(TABLE_IP, ip2ContentValues(ip), where.toString(), args);
             } finally {
                 IOUtils.closeQuietly(db);
@@ -252,9 +253,10 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
             try {
                 StringBuilder where = new StringBuilder();
                 where.append(COLUMN_TARGET_IP);
-                where.append(" = ? ");
+                where.append(" = ? ").append(" and ");
+                where.append(COLUMN_SOURCE_IP).append("= ?;");
                 for (HostIP ip : ipList) {
-                    String[] args = new String[]{String.valueOf(ip.targetIP)};
+                    String[] args = new String[]{ip.targetIP, ip.sourceIP};
                     db.update(TABLE_IP, ip2ContentValues(ip), where.toString(), args);
                 }
             } catch (Exception e) {
@@ -274,8 +276,8 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
         ip.rtt = cursor.getLong(cursor.getColumnIndex(COLUMN_RTT));
         ip.operator = cursor.getString(cursor.getColumnIndex(COLUMN_OPERATOR));
         ip.ttl = cursor.getInt(cursor.getColumnIndex(COLUMN_TTL));
-        ip.sucNum = cursor.getInt(cursor.getColumnIndex(COLUMN_SUCCESS_NUM));
-        ip.failNum = cursor.getInt(cursor.getColumnIndex(COLUMN_FAIL_NUM));
+        ip.setSucNum(cursor.getInt(cursor.getColumnIndex(COLUMN_SUCCESS_NUM)));
+        ip.setFailNum(cursor.getInt(cursor.getColumnIndex(COLUMN_FAIL_NUM)));
         ip.visitSinceSaved = cursor.getInt(cursor.getColumnIndex(COLUMN_VISIT_NUM));
 
         return ip;
@@ -290,8 +292,8 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
         cv.put(COLUMN_TTL, ip.ttl);
 
         cv.put(COLUMN_RTT, ip.rtt);
-        cv.put(COLUMN_SUCCESS_NUM, ip.sucNum);
-        cv.put(COLUMN_FAIL_NUM, ip.failNum);
+        cv.put(COLUMN_SUCCESS_NUM, ip.getSucNum());
+        cv.put(COLUMN_FAIL_NUM, ip.getFailNum());
         cv.put(COLUMN_HOST, ip.host);
         cv.put(COLUMN_VISIT_NUM, ip.visitSinceSaved);
         return cv;

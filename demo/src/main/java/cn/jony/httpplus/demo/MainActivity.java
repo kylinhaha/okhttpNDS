@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         DNSCache.Instance.init(this.getApplicationContext(), new DNSCacheConfig.Builder().build(),
-                HostResolveStrategy.DEFAULT);
+                HostResolveStrategy.SYNC);
         final OkHttpClient client = new OkHttpClient.Builder().dns(new HttpDNS())
                 .addNetworkInterceptor
                         (new DnsVisitNetInterceptor()).build();

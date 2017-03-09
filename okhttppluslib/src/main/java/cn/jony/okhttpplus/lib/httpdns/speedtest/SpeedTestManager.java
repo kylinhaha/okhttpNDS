@@ -30,7 +30,6 @@ public class SpeedTestManager implements ISpeedtest {
      */
     @Override
     public int speedTest(String ip, String host) {
-
-        return mSpeedTests.speedTest(ip,host);
+        return mSpeedTests.speedTest(ip, host);
     }
 }
