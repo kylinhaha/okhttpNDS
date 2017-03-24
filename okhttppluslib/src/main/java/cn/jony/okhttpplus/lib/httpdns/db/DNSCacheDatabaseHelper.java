@@ -208,14 +208,25 @@ public class DNSCacheDatabaseHelper extends SQLiteOpenHelper implements DBConsta
      * @param ipList
      * @return 添加成功数目
      */
-    public int addIPList(List<HostIP> ipList) {
+    public int addOrUpdateIPList(List<HostIP> ipList) {
         int suc = 0;
         synchronized (synLock) {
-            SQLiteDatabase db = getWritableDatabase();
+            SQLiteDatabase db = null;
             try {
                 for (HostIP ip : ipList) {
                     try {
-                        suc += db.insert(TABLE_IP, null, ip2ContentValues(ip)) >= 0 ? 1 : 0;
+                        HostIP existIp = getIPByID(ip.sourceIP, ip.targetIP);
+                        db = getWritableDatabase();
+                        if (existIp != null) {
+                            StringBuilder where = new StringBuilder();
+                            where.append(COLUMN_TARGET_IP);
+                            where.append(" = ? ").append(" and ");
+                            where.append(COLUMN_SOURCE_IP).append("= ?;");
+                            String[] args = new String[]{ip.targetIP, ip.sourceIP};
+                            suc += db.update(TABLE_IP, ip2ContentValues(ip), where.toString(), args);
+                        } else {
+                            suc += db.insert(TABLE_IP, null, ip2ContentValues(ip)) >= 0 ? 1 : 0;
+                        }
                     } catch (Exception e) {
                         error(e);
                     }

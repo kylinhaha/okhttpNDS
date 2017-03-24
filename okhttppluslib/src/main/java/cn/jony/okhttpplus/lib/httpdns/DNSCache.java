@@ -11,6 +11,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.util.Log;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -21,7 +22,10 @@ import cn.jony.okhttpplus.lib.httpdns.model.HostIP;
 import cn.jony.okhttpplus.lib.httpdns.net.networktype.NetworkManager;
 import cn.jony.okhttpplus.lib.httpdns.strategy.HostResolveFactory;
 import cn.jony.okhttpplus.lib.httpdns.strategy.HostResolveStrategy;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public enum DNSCache {
     Instance;
@@ -32,8 +36,7 @@ public enum DNSCache {
     public DNSCacheConfig config;
     private DNSCacheDatabaseHelper dbHelper;
     private NetworkManager networkManager;
-    public OkHttpClient okHttpClient = new OkHttpClient.Builder().connectTimeout(1, TimeUnit
-            .SECONDS).readTimeout(1, TimeUnit.SECONDS).build();
+    public OkHttpClient okHttpClient;
 
     private Context context;
     private static int activityNum;
@@ -48,22 +51,39 @@ public enum DNSCache {
     }
 
     public void init(Context context, DNSCacheConfig config, String strategyName) {
+        init(context, config, strategyName, getDefaultClient());
+    }
+
+    private OkHttpClient getDefaultClient() {
+        return new OkHttpClient.Builder().connectTimeout(5, TimeUnit.SECONDS).readTimeout(5, TimeUnit.SECONDS)
+                .addInterceptor(SIMPLE_LOGGER_INTERCEPTOR).build();
+    }
+
+    public void init(Context context, DNSCacheConfig config, String strategyName, OkHttpClient client) {
         this.context = context.getApplicationContext();
         this.dbHelper = new DNSCacheDatabaseHelper(context);
         this.networkManager = NetworkManager.CreateInstance(context);
         this.config = config;
         this.strategyName = strategyName;
 
+        okHttpClient = client;
+
         startUpdateTask();
         registerActivityNumListener();
     }
 
     public void init(Context context, DNSCacheConfig config, HostResolveStrategy strategy) {
+        init(context, config, strategy, getDefaultClient());
+    }
+
+    public void init(Context context, DNSCacheConfig config, HostResolveStrategy strategy, OkHttpClient client) {
         this.context = context.getApplicationContext();
         this.dbHelper = new DNSCacheDatabaseHelper(context);
         this.networkManager = NetworkManager.CreateInstance(context);
         this.config = config;
         this.strategy = strategy;
+
+        okHttpClient = client;
 
         startUpdateTask();
         registerActivityNumListener();
@@ -201,4 +221,15 @@ public enum DNSCache {
     public static boolean isForeGround() {
         return activityNum > 0;
     }
+
+    static Interceptor SIMPLE_LOGGER_INTERCEPTOR = new Interceptor() {
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+            Request request = chain.request();
+            Log.d("request", request.toString());
+            Response response = chain.proceed(request);
+            Log.d("response", response.toString() + "\r\n" + response.peekBody(4000).string());
+            return response;
+        }
+    };
 }

@@ -4,12 +4,11 @@ package cn.jony.okhttpplus.lib.httpdns;
 import cn.jony.okhttpplus.lib.httpdns.strategy.HostResolveStrategy;
 
 public class DNSCacheConfig {
-    private static final long EXPIRE_MILLIS = 300_000;
-
     public static final int MAX_TTL = 300;
-    public static final int FAST_TTL = 64;
     public static final int MAX_CACHE_SIZE = 20;
     public static final long MAX_RTT = 300;
+
+    private static final long EXPIRE_MILLIS = 3_600_000;
 
     public String hostResolveStrategyName;
     public HostResolveStrategy hostResolveStrategy;

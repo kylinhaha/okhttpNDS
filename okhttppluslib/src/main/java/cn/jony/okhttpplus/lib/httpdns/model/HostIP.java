@@ -114,7 +114,7 @@ public class HostIP {
         }
 
         public Builder ttl(int val) {
-            ttl = val;
+            ttl = val > MAX_TTL ? MAX_TTL : val;
             return this;
         }
 

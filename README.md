@@ -30,7 +30,10 @@ gradle引用：compile 'cn.jony.okhttpplus.lib:okhttp3plus:1.0.0-beta'
 如果都没有查找到，则走系统默认的dns；默认的httpDNS查找是异步的，因此第一次可能不能及时的走httpDNS，如果希望第一次查找就走dns，可以使用
 {@link cn.jony.okhttpplus.lib.httpdns.DNSCache#preLoadDNS(String...)}来进行预加载
 
-2. 更新 
+2. 检查ip是否新鲜
+对于查找出来的ip验证其ttl是否新鲜，如果不新鲜则在后台启动一次对该host的lookup重新获取其ttl。
+
+3. 更新 
 分为定时更新和非定时更新:
 a. 定时更新：只更新db中的ip数据，不更新cache中的数据，cache中的数据在超时时，从db中查找或者通过httpDNS请求返回数据更新cache。
 定时更新流程：每隔超时时间的一半时间，对db所有的HostIP数据进行一轮测速并统计，并重置缓存时间内访问量超过阈值的HostIP的缓存时间；最后
@@ -38,16 +41,16 @@ a. 定时更新：只更新db中的ip数据，不更新cache中的数据，cache
 b. 非定时更新，主要包括两个方面：1. 当cache数据失效时，从db获得有效数据时直接更新cache；2. 通过DnsVisitInterceptor对访问的dns进行
 数据更新。
 
-3. 验证HostIp可靠性：
+4. 验证HostIp可靠性：
    1. targetIP 存在 
    2. 没有超时 
    3. rtt 没有超过允许的最大rtt，默认300 
-   4. ttl 没有超过允许的最大ttl，默认300 
-   5. 请求失败次数最多为1次，或者成功率大于95%
+   4. 请求失败次数最多为1次，或者成功率大于95%
 
 #####strict - 严格模式
-与default模式的差别主要在于default模式会优先使用未使用过的dns（HostIP的rtt默认为0）；而strict模式确保HostIP只有在经过
-测速后才可以使用，因此strict模式在HttpDNS请求后会尽快发送一轮测速，而default模式只会在定时更新任务中进行测速。
+与default模式的差别主要在于default模式会优先使用未使用过的dns（HostIP的rtt默认为0）；而strict模式确保HostIP只有在经过测速后才可以使用，
+因此strict模式在HttpDNS请求后会尽快发送一轮测速，而default模式只会在定时更新任务中进行测速。并且在过滤可以使用的ip的时候strict模式是通过
+isFresh来验证而不是通过isReliable验证
 #####sync - 同步模式
 default在发出HttpDNS请求后并不进行等待，直接返回结果。这时结果可能为null，即本次请求下次使用。而sync模式等待请求完成后再返回，
 一般依次dns请求的响应时间在20ms以内。
@@ -65,6 +68,8 @@ default在发出HttpDNS请求后并不进行等待，直接返回结果。这时
         .addNetworkInterceptor
                 (new DnsVisitNetInterceptor()).build();
                 
+3. 调用DNSCache.preLoad预加载app的主host               
+                
                 
 ***                
-下一步要做单元测试和测速模块来到数据分析，欢迎使用，如果有bug可以随时反馈
+下一步要做单元测试和测速模块，欢迎使用，如果有bug可以随时反馈

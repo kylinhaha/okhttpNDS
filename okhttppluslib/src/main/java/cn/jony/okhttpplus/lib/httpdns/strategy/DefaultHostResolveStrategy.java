@@ -53,12 +53,20 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
         speedTestManager = new SpeedTestManager();
     }
 
+    protected boolean isFilter(HostIP ip) {
+        return isReliable(ip);
+    }
+
     @Override
     public boolean isReliable(HostIP ip) {
         DNSCacheConfig config = DNSCache.Instance.config;
         return !TextUtils.isEmpty(ip.targetIP) && ip.getWorkMillis() < config.expireMillis
-                && ip.rtt <= config.maxRtt && ip.ttl <= config.maxTtl &&
-                allowFail(ip);
+                && ip.rtt <= config.maxRtt && allowFail(ip);
+    }
+
+    @Override
+    public boolean isFresh(HostIP ip) {
+        return isReliable(ip) && ip.getWorkMillis() <= ip.ttl;
     }
 
     private boolean allowFail(HostIP ip) {
@@ -75,6 +83,8 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
             Collections.sort(list, IP_COMPARATOR);
         }
 
+        checkFresh(list, hostname);
+
         return ipList2Addresses(list);
     }
 
@@ -85,10 +95,26 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
         Iterator<HostIP> it = ipList.iterator();
         while (it.hasNext()) {
             HostIP ip = it.next();
-            if (!isReliable(ip)) {
+            if (!isFilter(ip)) {
                 it.remove();
             }
         }
+    }
+
+    protected void checkFresh(final List<HostIP> ipList, final String hostname) {
+        if (ipList == null || ipList.size() == 0)
+            return;
+
+        RealTimeThreadPool.getInstance().execute(new Runnable() {
+            @Override
+            public void run() {
+                for (HostIP ip : ipList) {
+                    if (!isFresh(ip)) {
+                        lookupNet(hostname);
+                    }
+                }
+            }
+        });
     }
 
     protected static List<InetAddress> ipList2Addresses(List<HostIP> ipList) {
@@ -117,6 +143,9 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
         if (!EmptyUtil.isCollectionEmpty(list)) {
             cache.put(new HostIP.Key(hostname, sourceIP), list);
         }
+
+        checkFresh(list, hostname);
+
         return ipList2Addresses(list);
     }
 
@@ -192,7 +221,7 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
                 @Override
                 public void run() {
                     cache.put(new HostIP.Key(hostname, NetworkManager.getInstance().ipAddress), ipList);
-                    DNSCache.Instance.getDbHelper().addIPList(ipList);
+                    DNSCache.Instance.getDbHelper().addOrUpdateIPList(ipList);
                 }
             });
         }
@@ -220,14 +249,14 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
                 ip.saveMillis = System.currentTimeMillis();
             }
 
-            if (!isReliable(ip)) {
+            if (!isFresh(ip)) {
                 ipIterator.remove();
             }
         }
 
         cache.evictAll();
         dbHelper.clear();
-        dbHelper.addIPList(ipList);
+        dbHelper.addOrUpdateIPList(ipList);
     }
 
     @Override
@@ -251,15 +280,15 @@ public class DefaultHostResolveStrategy extends AbsHostResolveStrategy {
         DNSCache.Instance.getDbHelper().clear();
     }
 
-    private static final int FAIL_WEIGHT = 200;
-    private static final int RTT_WEIGHT = 2;
+    private static final int FAIL_WEIGHT = 2000;
+    private static final int RTT_WEIGHT = 20;
     private static final int ttl_WEIGHT = 1;
 
     protected static final Comparator<HostIP> IP_COMPARATOR = new Comparator<HostIP>() {
         @Override
         public int compare(HostIP o1, HostIP o2) {
-            long weight1 = o1.getFailNum() * FAIL_WEIGHT + o1.rtt * RTT_WEIGHT + o1.ttl * ttl_WEIGHT;
-            long weight2 = o2.getFailNum() * FAIL_WEIGHT + o2.rtt * RTT_WEIGHT + o2.ttl * ttl_WEIGHT;
+            long weight1 = o1.getFailNum() * FAIL_WEIGHT + o1.rtt * RTT_WEIGHT - o1.ttl * ttl_WEIGHT;
+            long weight2 = o2.getFailNum() * FAIL_WEIGHT + o2.rtt * RTT_WEIGHT - o2.ttl * ttl_WEIGHT;
             return weight1 > weight2 ? 1 : weight1 == weight2 ? 0 : -1;
         }
     };

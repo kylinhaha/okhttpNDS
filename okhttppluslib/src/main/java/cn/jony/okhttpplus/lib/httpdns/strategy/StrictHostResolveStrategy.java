@@ -15,6 +15,11 @@ public class StrictHostResolveStrategy extends DefaultHostResolveStrategy {
         return super.isReliable(ip) && ip.hasUsed();
     }
 
+    @Override
+    protected boolean isFilter(HostIP ip) {
+        return isFresh(ip);
+    }
+
     /**
      * 测速后依然只更新db，cache通过db更新
      *

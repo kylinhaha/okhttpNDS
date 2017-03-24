@@ -34,7 +34,6 @@ public interface HostResolveStrategy {
      * <br />
      * sync - 同步模式，default在发出HttpDNS请求后并不进行等待，直接返回结果。这时结果可能为null，即本次请求下次使用。而sync模式等待请求完成后再返回，
      * 一般依次dns请求的响应时间在20ms以内。
-     *
      */
     String DEFAULT = "default";
     String STRICT = "strict";
@@ -49,6 +48,11 @@ public interface HostResolveStrategy {
 
         @Override
         public boolean isReliable(HostIP ip) {
+            return false;
+        }
+
+        @Override
+        public boolean isFresh(HostIP ip) {
             return false;
         }
 
@@ -78,6 +82,12 @@ public interface HostResolveStrategy {
     List<InetAddress> lookup(String hostname) throws UnknownHostException;
 
     boolean isReliable(HostIP ip);
+
+    /**
+     * @param ip
+     * @return true-该dns依旧新鲜；false-该dns可能不再新鲜，应该考虑重新验证
+     */
+    boolean isFresh(HostIP ip);
 
     void update();
 

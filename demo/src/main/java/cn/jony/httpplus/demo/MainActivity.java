@@ -44,8 +44,7 @@ public class MainActivity extends AppCompatActivity {
         DNSCache.Instance.init(this.getApplicationContext(), new DNSCacheConfig.Builder().build(),
                 HostResolveStrategy.SYNC);
         final OkHttpClient client = new OkHttpClient.Builder().dns(new HttpDNS())
-                .addNetworkInterceptor
-                        (new DnsVisitNetInterceptor()).build();
+                .addNetworkInterceptor(new DnsVisitNetInterceptor()).build();
 
         findViewById(R.id.btn1).setOnClickListener(new View.OnClickListener() {
             @Override
